@@ -13,6 +13,43 @@ import cv2
 import numpy as np
 
 
+def bidirectional_filling(
+    motion_backward: np.ndarray, motion_forward: np.ndarray
+) -> tuple[np.ndarray, np.ndarray]:
+    """Bidirectional filling of the motion field.
+
+    This function is used to fill the blocks without motion vectors.
+    Video encoders associate a motion vector to predicted blocks. Some
+    blocks are "intra blocks" and do not have a motion vector in a
+    specific direction. Bidirectional filling is used to fill the motion
+    vectors for these blocks by taking the motion vector from the other direction.
+
+    Args:
+        motion_backward (np.ndarray): Backward motion field.
+        motion_forward (np.ndarray): Forward motion field.
+
+    Returns:
+        list: Two numpy arrays containing the backward and forward motion vectors.
+    """
+
+    result_backward = motion_backward.copy()
+    result_forward = motion_forward.copy()
+
+    # Create masks for zero vectors
+    backward_zero = (result_backward[..., 0] == 0) & (result_backward[..., 1] == 0)
+    forward_zero = (result_forward[..., 0] == 0) & (result_forward[..., 1] == 0)
+
+    # Update where backward is zero
+    result_backward[backward_zero, 0] = -result_forward[backward_zero, 0]
+    result_backward[backward_zero, 1] = -result_forward[backward_zero, 1]
+
+    # Update where forward is zero
+    result_forward[forward_zero, 0] = -result_backward[forward_zero, 0]
+    result_forward[forward_zero, 1] = -result_backward[forward_zero, 1]
+
+    return result_backward, result_forward
+
+
 def upscale(method: str, frame: np.ndarray, MiSize: int = 4) -> np.ndarray:
     """Upscale motion field to frame size.
 
