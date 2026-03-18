@@ -24,9 +24,13 @@ repos:
         [
           beartype,
           einops,
+          h5py,
           jax,
           jaxtyping,
+          opencv-python,
           optax,
+          pillow,
+          pypng,
           pytest,
           typing_extensions,
           wadler_lindig,
