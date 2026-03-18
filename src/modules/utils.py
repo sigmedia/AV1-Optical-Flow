@@ -29,7 +29,7 @@ def bidirectional_filling(
         motion_forward (np.ndarray): Forward motion field.
 
     Returns:
-        list: Two numpy arrays containing the backward and forward motion vectors.
+        tuple: Two numpy arrays containing the backward and forward motion vectors.
     """
 
     result_backward = motion_backward.copy()
