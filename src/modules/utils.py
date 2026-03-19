@@ -9,6 +9,8 @@
  Python file used to define all the utility functions.
 """
 
+import subprocess
+
 import cv2
 import numpy as np
 
@@ -73,6 +75,25 @@ def check_ivf_file(file_path: str) -> bool:
         if signature != IVF_SIGNATURE or codec != CODEC:
             return False
         return True
+
+
+def generate_inspect_json(input_file: str, output_folder: str) -> None:
+    """Generate the JDON file using AOM inspect tool.
+
+    To extract the metadata from an AV1 bitstream, we use inspect tool
+    from AOM, that will generate a JSON file during the decoding process.
+
+    Args:
+        input_file (str): Path to the input AV1 file.
+        output_folder (str): Path to the output folder.
+
+    Returns:
+        bool: True if the JSON file is generated, False otherwise.
+    """
+
+    command = f"./src/third_parties/aom_build/examples/inspect {input_file} "
+    command += f"-mv -r > {output_folder}/inspect.json"
+    subprocess.run(command, shell=True)
 
 
 def upscale(method: str, frame: np.ndarray, MiSize: int = 4) -> np.ndarray:
