@@ -50,6 +50,31 @@ def bidirectional_filling(
     return result_backward, result_forward
 
 
+def check_ivf_file(file_path: str) -> bool:
+    """Check if the file is an IVF file.
+
+    Args:
+        file_path (str): Path to the file.
+
+    Returns:
+        bool: True if the file is an IVF file, False otherwise.
+    """
+
+    IVF_SIGNATURE = b"DKIF"
+    IVF_HEADER_SIZE = 32
+    CODEC = b"AV01"
+
+    with open(file_path, "rb") as file:
+        header = file.read(IVF_HEADER_SIZE)
+
+        signature = header[:4]
+        codec = header[8:12]
+
+        if signature != IVF_SIGNATURE or codec != CODEC:
+            return False
+        return True
+
+
 def upscale(method: str, frame: np.ndarray, MiSize: int = 4) -> np.ndarray:
     """Upscale motion field to frame size.
 
