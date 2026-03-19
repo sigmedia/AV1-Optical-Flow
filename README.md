@@ -127,9 +127,6 @@ normalisation — the pipeline includes a pure-Python AV1 bitstream parser
 and `ref_frame_idx` fields from each frame header, tracking the 8-slot
 reference buffer across the entire sequence.
 
-See [`doc/av1_parser.md`](doc/av1_parser.md) for a detailed technical
-explanation.
-
 ### Post-Processing
 
 | Step | Description |
