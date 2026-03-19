@@ -18,6 +18,7 @@ import cv2
 import ijson
 from tqdm import tqdm
 
+from src.modules.av1_parser import get_frame_ref_order_hints
 from src.modules.flow_io import writeFlowFile
 from src.modules.json_processing import get_motion_vectors
 from src.modules.json_processing import initialize_unwrapping_dict
@@ -25,7 +26,6 @@ from src.modules.json_processing import unwrap_order_hints
 from src.modules.logger import start_logger
 from src.modules.utils import check_ivf_file
 from src.modules.utils import generate_inspect_json
-from src.modules.utils import get_frame_ref_index
 
 
 def get_args_parser():
@@ -158,7 +158,9 @@ if __name__ == "__main__":
         cap.release()
 
         logger.info("Getting frame reference index")
-        frames_ref_index = get_frame_ref_index(args.input_file, tmp_dir)
+        frames_ref_index = get_frame_ref_order_hints(args.input_file)
+
+        logger.debug(f"Frames ref index: {frames_ref_index}")
 
         frame_number = 0
         cursor = 0
@@ -180,7 +182,7 @@ if __name__ == "__main__":
 
                 logger.debug(f"Processing frame {frame_number}")
 
-                frame_ref_index = eval(frames_ref_index[frame_number])
+                frame_ref_index = [0] + frames_ref_index[frame_number]
                 frame_ref_index = unwrap_order_hints(frame_ref_index, unwrapping_dict)
 
                 motion_backward, motion_forward = get_motion_vectors(

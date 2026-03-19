@@ -12,8 +12,4 @@ cd aom_build
 cmake ../aom/ -DCONFIG_TUNE_VMAF=1 -DENABLE_CCACHE=1 -DCONFIG_INSPECTION=1
 make -j8
 
-cd ..
-
-# Installing AV1Parser dependencies
-
-git clone git@github.com:yohhoy/av1parser.git
+cd ../..
