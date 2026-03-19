@@ -25,6 +25,7 @@ repos:
           beartype,
           einops,
           h5py,
+          ijson,
           loguru,
           opencv-python,
           pillow,
