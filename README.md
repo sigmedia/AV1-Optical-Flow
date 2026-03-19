@@ -1,8 +1,7 @@
 # AV1-Optical-Flow
 
 Extract and pre-process motion vectors from AV1 bitstreams for fast and cheap optical flow estimation.
-
-https://github.com/user-attachments/assets/extract_motion.mp4
+![Demo](assets/extract_motion.mp4)
 
 ## Overview
 
