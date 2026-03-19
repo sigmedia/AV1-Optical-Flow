@@ -106,7 +106,6 @@ AV1-Optical-Flow/
 │   └── av1_parser.md               # Technical documentation for the AV1 parser
 ├── assets/
 │   └── Extract Motion.mp4          # Demo video
-└── test/                            # Tests
 ```
 
 ## How It Works
