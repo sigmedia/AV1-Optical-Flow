@@ -20,7 +20,7 @@ from .utils import upscale
 def get_motion_vectors(
     frame_data: dict,
     frame_number: int,
-    reference_dict: dict,
+    reference_list: list,
     linear_interpolation: bool = False,
     upscale_function: str = "None",
     enable_bidirectional_filling: bool = False,
@@ -32,7 +32,7 @@ def get_motion_vectors(
 
     Args:
         frame_data (dict): Data from the JSON File.
-        reference_dict (dict): Dictionary of reference frames.
+        reference_list (list): List of reference frames.
         linear_interpolation (bool): Linear interpolation.
         upscale (str): Upscale to frame size.
         bidirectional_filling (bool): Bidirectional filling used to enhance motion vectors.
@@ -51,7 +51,7 @@ def get_motion_vectors(
         reference_map_forward = reference_frames[:, :, 1]
 
         def f(x):
-            return frame_number - reference_dict[x]
+            return frame_number - reference_list[x]
 
         distance_map_backward = np.vectorize(f)(reference_map_backward)
         distance_map_forward = np.vectorize(f)(reference_map_forward)
