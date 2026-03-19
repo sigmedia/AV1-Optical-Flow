@@ -30,4 +30,5 @@ repos:
           opencv-python,
           pillow,
           pypng,
+          tqdm,
         ]
