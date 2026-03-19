@@ -13,8 +13,8 @@
 
 import numpy as np
 
-from utils import bidirectional_filling
-from utils import upscale
+from .utils import bidirectional_filling
+from .utils import upscale
 
 
 def get_motion_vectors(
