@@ -36,12 +36,13 @@ The pipeline:
 - Python 3.10+
 - CMake and a C compiler (for building AOM)
 - The dependencies listed in `requirements.txt`
+- libvmaf
 
 ## Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/<your-username>/AV1-Optical-Flow.git
+git clone https://github.com/sigmedia/AV1-Optical-Flow.git
 cd AV1-Optical-Flow
 
 # Run the setup script (installs Python deps + builds AOM from source)
