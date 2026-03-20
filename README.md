@@ -1,6 +1,11 @@
 # AV1-Optical-Flow
 
 Extract and pre-process motion vectors from AV1 bitstreams for fast and cheap optical flow estimation.
+
+> AV1 Motion Vector Fidelity and Application for Efficient Optical Flow  
+> [Julien Zouein](https://github.com/zwayn), [Vibhoothi](https://github.com/vibhoothi), Anil Kokaram  
+> Picture Coding Symposium (PCS) 2025
+
 <p align="center">
 <video width="720" src="https://github.com/user-attachments/assets/895cdddc-657e-43a3-8b76-e7e675998b87" autoplay muted loop playsinline>
    Your browser does not support the video tag.
@@ -141,4 +146,16 @@ This project is licensed under the [GNU Affero General Public License v3.0](LICE
 
 ```
 Copyright (C) 2026  Sigmedia.tv / Julien Zouein (zoueinj@tcd.ie)
+```
+
+## Citation
+```bibtex
+@inproceedings{inproceedings,
+author = {Zouein, Julien and Vibhoothi, Vibhoothi and Kokaram, Anil},
+year = {2025},
+month = {12},
+pages = {1-5},
+title = {AV1 Motion Vector Fidelity and Application for Efficient Optical Flow},
+doi = {10.1109/PCS65673.2025.11417638}
+}
 ```
