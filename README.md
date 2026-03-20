@@ -34,9 +34,9 @@ The pipeline:
 ## Requirements
 
 - Python 3.10+
+- [uv](https://docs.astral.sh/uv/) (Python package manager)
 - CMake and a C compiler (for building AOM)
-- The dependencies listed in `requirements.txt`
-- libvmaf
+- libvmaf (for building AOM with VMAF tuning)
 
 ## Installation
 
@@ -45,21 +45,29 @@ The pipeline:
 git clone https://github.com/sigmedia/AV1-Optical-Flow.git
 cd AV1-Optical-Flow
 
-# Run the setup script (installs Python deps + builds AOM from source)
+# Run the setup script (installs Python deps via uv + builds AOM from source)
 bash setup.sh
 ```
 
 The setup script will:
-- Install all Python dependencies from `requirements.txt`
+- Run `uv sync` to create a virtual environment and install all dependencies
+  from `pyproject.toml`
 - Clone and build [AOM](https://aomedia.googlesource.com/aom) with the
   inspection API enabled (`CONFIG_INSPECTION=1`)
+- Install pre-commit hooks
+
+If you don't have `uv` installed yet:
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
 
 ## Usage
 
 The input must be an **IVF-wrapped AV1** file.
 
 ```bash
-python main.py \
+uv run python main.py \
     --input_file path/to/video.ivf \
     --output_directory path/to/output/
 ```
@@ -81,7 +89,7 @@ python main.py \
 Extract motion vectors with linear interpolation and bicubic upscaling:
 
 ```bash
-python main.py \
+uv run python main.py \
     --input_file input.ivf \
     --output_directory ./flows/ \
     --linear_interpolation \
@@ -94,13 +102,29 @@ This produces two files per frame in the output directory:
 - `motion_backward_<N>.flo5` — backward motion field (current frame to past reference)
 - `motion_forward_<N>.flo5` — forward motion field (current frame to future reference)
 
+## Development
+
+```bash
+# Install dev dependencies
+uv sync --group dev
+
+# Run linter
+uv run ruff check .
+
+# Run type checker
+uv run pyright
+
+# Run pre-commit on all files
+uv run pre-commit run --all-files
+```
+
 ## Project Structure
 
 ```
 AV1-Optical-Flow/
 ├── main.py                          # Entry point: orchestrates the full pipeline
-├── setup.sh                         # Builds AOM and installs Python dependencies
-├── requirements.txt                 # Python dependencies
+├── pyproject.toml                   # Project metadata and dependencies (uv)
+├── setup.sh                         # Builds AOM and installs dependencies via uv
 ├── src/
 │   └── modules/
 │       ├── av1_parser.py            # Pure-Python AV1 bitstream parser (order hints)
@@ -108,10 +132,8 @@ AV1-Optical-Flow/
 │       ├── flow_io.py               # Read/write optical flow in multiple formats
 │       ├── utils.py                 # Upscaling, bidirectional filling, IVF validation
 │       └── logger.py                # Logging configuration
-├── doc/
-│   └── av1_parser.md               # Technical documentation for the AV1 parser
 ├── assets/
-│   └── Extract Motion.mp4          # Demo video
+│   └── extract_motion.mp4          # Demo video
 ```
 
 ## How It Works

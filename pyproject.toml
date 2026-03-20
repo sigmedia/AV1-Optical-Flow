@@ -1,0 +1,31 @@
+[project]
+name = "av1-optical-flow"
+version = "1.0.0"
+description = "Extract and pre-process motion vectors from AV1 bitstreams for fast optical flow estimation."
+readme = "README.md"
+license = "AGPL-3.0-or-later"
+requires-python = ">=3.10"
+authors = [
+    { name = "Julien Zouein", email = "zoueinj@tcd.ie" },
+]
+dependencies = [
+    "h5py>=3.16",
+    "ijson>=3.5",
+    "loguru>=0.7",
+    "numpy>=2.4",
+    "opencv-python>=4.13",
+    "pillow>=12.1",
+    "pypng>=0.20220715",
+    "tqdm>=4.67",
+]
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.5",
+    "pyright>=1.1.408",
+    "ruff>=0.15",
+]
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
