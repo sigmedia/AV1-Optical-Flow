@@ -226,6 +226,6 @@ if __name__ == "__main__":
                         (display_backward, display_forward), axis=1
                     )
                     cv2.imshow("Motion Vectors", display)
-                    cv2.waitKey(100)
+                    cv2.waitKey(1)
 
     logger.info("Done processing video file")
