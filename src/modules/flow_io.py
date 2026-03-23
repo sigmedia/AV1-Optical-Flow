@@ -8,6 +8,9 @@
 Python file used to read and write flow files in several formats.
 """
 
+from collections import namedtuple
+from itertools import accumulate
+
 import struct
 import numpy as np
 import png
@@ -25,6 +28,82 @@ FLO_TAG_FLOAT = (
 FLO_TAG_STRING = "PIEH"  # first 4 bytes in flo file; use this when WRITING the file
 FLO_UNKNOWN_FLOW_THRESH = 1e9  # flo format threshold for unknown values
 FLO_UNKNOWN_FLOW = 1e10  # value to use to represent unknown flow in flo file format
+
+
+def flow_to_rgb(flow, flow_max_radius=None, background="bright"):
+    """Convert flow to RGB image.
+
+    Function from flowpy package: https://gitlab-research.centralesupelec.fr/2018seznecm/flowpy
+
+    Args:
+        flow: flow with shape height x width x 2
+        flow_max_radius: maximum radius of the flow
+        background: background color
+    Returns:
+        RGB image with shape height x width x 3
+    """
+
+    wheel = _make_colorwheel()
+
+    complex_flow = flow[..., 0] + 1j * flow[..., 1]
+    complex_flow, nan_mask = _replace_nans(complex_flow)
+
+    radius, angle = np.abs(complex_flow), np.angle(complex_flow)
+
+    if flow_max_radius is None:
+        flow_max_radius = np.max(radius)
+
+    if flow_max_radius > 0:
+        radius /= flow_max_radius
+
+    ncols = len(wheel)
+
+    # Map the angles from (-pi, pi] to [0, 2pi) to [0, ncols - 1)
+    angle[angle < 0] += 2 * np.pi
+    angle = angle * ((ncols - 1) / (2 * np.pi))
+
+    # Make the wheel cyclic for interpolation
+    wheel = np.vstack((wheel, wheel[0]))
+
+    # Interpolate the hues
+    (angle_fractional, angle_floor), angle_ceil = np.modf(angle), np.ceil(angle)
+    angle_fractional = angle_fractional.reshape((angle_fractional.shape) + (1,))
+    float_hue = (
+        wheel[angle_floor.astype(int)] * (1 - angle_fractional)
+        + wheel[angle_ceil.astype(int)] * angle_fractional
+    )
+
+    ColorizationArgs = namedtuple(
+        "ColorizationArgs",
+        ["move_hue_valid_radius", "move_hue_oversized_radius", "invalid_color"],
+    )
+
+    def move_hue_on_V_axis(hues, factors):
+        return hues * np.expand_dims(factors, -1)
+
+    def move_hue_on_S_axis(hues, factors):
+        return 255.0 - np.expand_dims(factors, -1) * (255.0 - hues)
+
+    if background == "dark":
+        parameters = ColorizationArgs(
+            move_hue_on_V_axis,
+            move_hue_on_S_axis,
+            np.array([255, 255, 255], dtype=float),
+        )
+    else:
+        parameters = ColorizationArgs(
+            move_hue_on_S_axis, move_hue_on_V_axis, np.array([0, 0, 0], dtype=float)
+        )
+
+    colors = parameters.move_hue_valid_radius(float_hue, radius)
+
+    oversized_radius_mask = radius > 1
+    colors[oversized_radius_mask] = parameters.move_hue_oversized_radius(
+        float_hue[oversized_radius_mask], 1 / radius[oversized_radius_mask]
+    )
+    colors[nan_mask] = parameters.invalid_color
+
+    return colors.astype(np.uint8)
 
 
 def readFlowFile(filepath):
@@ -492,3 +571,68 @@ def dispToBGR(disp, colormap=cv.COLORMAP_PLASMA):
     disp = (255 * disp).astype(np.uint8)
     disp = cv.applyColorMap(disp, colormap)
     return disp
+
+
+DEFAULT_TRANSITIONS = (15, 6, 4, 11, 13, 6)
+
+
+def _make_colorwheel(transitions=DEFAULT_TRANSITIONS):
+    """Creates a color wheel.
+
+    A color wheel defines the transitions between the six primary hues:
+    Red(255, 0, 0), Yellow(255, 255, 0), Green(0, 255, 0), Cyan(0, 255, 255), Blue(0, 0, 255) and Magenta(255, 0, 255).
+
+    Parameters
+    ----------
+    transitions: sequence_like
+        Contains the length of the six transitions.
+        Defaults to (15, 6, 4, 11, 13, 6), based on humain perception.
+
+    Returns
+    -------
+    colorwheel: numpy.ndarray
+        The RGB values of the transitions in the color space.
+
+    Notes
+    -----
+    For more information, take a look at
+    https://web.archive.org/web/20051107102013/http://members.shaw.ca/quadibloc/other/colint.htm
+
+    """
+
+    colorwheel_length = sum(transitions)
+
+    # The red hue is repeated to make the color wheel cyclic
+    base_hues = map(
+        np.array,
+        (
+            [255, 0, 0],
+            [255, 255, 0],
+            [0, 255, 0],
+            [0, 255, 255],
+            [0, 0, 255],
+            [255, 0, 255],
+            [255, 0, 0],
+        ),
+    )
+
+    colorwheel = np.zeros((colorwheel_length, 3), dtype="uint8")
+    hue_from = next(base_hues)
+    start_index = 0
+    for hue_to, end_index in zip(base_hues, accumulate(transitions)):
+        transition_length = end_index - start_index
+
+        colorwheel[start_index:end_index] = np.linspace(
+            hue_from, hue_to, transition_length, endpoint=False
+        )
+        hue_from = hue_to
+        start_index = end_index
+
+    return colorwheel
+
+
+def _replace_nans(array, value=0):
+    nan_mask = np.isnan(array)
+    array[nan_mask] = value
+
+    return array, nan_mask
