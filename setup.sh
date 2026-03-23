@@ -4,6 +4,7 @@ set -e
 # Install Python dependencies via uv
 uv sync
 
+mkdir -p src/third_parties
 # Build AOM with inspection API
 cd src/third_parties
 
