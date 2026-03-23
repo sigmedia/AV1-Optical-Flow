@@ -16,9 +16,11 @@ import tempfile
 import argparse
 import cv2
 import ijson
+import numpy as np
 from tqdm import tqdm
 
 from src.modules.av1_parser import get_frame_ref_order_hints
+from src.modules.flow_io import flow_to_rgb
 from src.modules.flow_io import writeFlowFile
 from src.modules.json_processing import get_motion_vectors
 from src.modules.json_processing import initialize_unwrapping_dict
@@ -58,6 +60,7 @@ def get_args_parser():
     parser.add_argument(
         "--bidirectional_filling",
         action="store_true",
+        default=False,
         help="Enable bidirectional filling of the motion vectors.",
     )
 
@@ -73,7 +76,16 @@ def get_args_parser():
     parser.add_argument(
         "--linear_interpolation",
         action="store_true",
+        default=False,
         help="Enable linear interpolation of the motion vectors.",
+    )
+
+    parser.add_argument(
+        "--display",
+        required=False,
+        default=False,
+        action="store_true",
+        help="Display the motion vectors as RGB images.",
     )
 
     parser.add_argument(
@@ -202,5 +214,18 @@ if __name__ == "__main__":
                     motion_forward,
                     f"{args.output_directory}/motion_forward_{frame_number}.flo5",
                 )
+
+                if args.display:
+                    display_backward = flow_to_rgb(motion_backward)
+                    display_backward = cv2.cvtColor(display_backward, cv2.COLOR_RGB2BGR)
+                    display_forward = flow_to_rgb(motion_forward)
+                    display_forward = cv2.cvtColor(display_forward, cv2.COLOR_RGB2BGR)
+
+                    # Concatenate the two images horizontally
+                    display = np.concatenate(
+                        (display_backward, display_forward), axis=1
+                    )
+                    cv2.imshow("Motion Vectors", display)
+                    cv2.waitKey(100)
 
     logger.info("Done processing video file")
