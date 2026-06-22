@@ -4,7 +4,10 @@ repos:
   hooks:
     - id: check-yaml
     - id: end-of-file-fixer
+      # Never rewrite the dav1d patch: byte changes break `git apply`.
+      exclude: '^patches/'
     - id: trailing-whitespace
+      exclude: '^patches/'
 - repo: https://github.com/astral-sh/ruff-pre-commit
   # Ruff version.
   rev: v0.15.2

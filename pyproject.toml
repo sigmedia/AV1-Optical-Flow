@@ -10,7 +10,6 @@ authors = [
 ]
 dependencies = [
     "h5py>=3.16",
-    "ijson>=3.5",
     "loguru>=0.7",
     "numpy>=2.4",
     "opencv-python>=4.13",
@@ -21,6 +20,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+    "ijson>=3.5",  # only used by test/validate_dav1d_vs_json.py
     "pre-commit>=4.5",
     "pyright>=1.1.408",
     "ruff>=0.15",

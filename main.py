@@ -11,15 +11,13 @@ Python file used to run the extraction pipeline.
 
 from pathlib import Path
 import subprocess
-import tempfile
 
 import argparse
 import cv2
-import ijson
 import numpy as np
 from tqdm import tqdm
 
-from src.modules.av1_parser import get_frame_ref_order_hints
+from src.modules.dav1d_inspect import iter_frames
 from src.modules.flow_io import flow_to_rgb
 from src.modules.flow_io import writeFlowFile
 from src.modules.json_processing import get_motion_vectors
@@ -27,7 +25,6 @@ from src.modules.json_processing import initialize_unwrapping_dict
 from src.modules.json_processing import unwrap_order_hints
 from src.modules.logger import start_logger
 from src.modules.utils import check_ivf_file
-from src.modules.utils import generate_inspect_json
 
 
 def get_args_parser():
@@ -89,6 +86,14 @@ def get_args_parser():
     )
 
     parser.add_argument(
+        "--threads",
+        type=int,
+        required=False,
+        default=0,
+        help="Number of dav1d decoder threads (0 = auto / all logical cores).",
+    )
+
+    parser.add_argument(
         "--logger_level",
         type=str,
         required=False,
@@ -120,10 +125,10 @@ def get_version():
 
     print(f"AV1-Optical-Flow: {version}")
 
-    command_aom = "cd src/third_parties/aom && git describe --tags"
-    result = subprocess.run(command_aom, shell=True, stdout=subprocess.PIPE)
-    aom_version = result.stdout.decode("utf-8").strip()
-    print(f"AOM version: {aom_version}")
+    command_dav1d = "cd src/third_parties/dav1d && git describe --tags"
+    result = subprocess.run(command_dav1d, shell=True, stdout=subprocess.PIPE)
+    dav1d_version = result.stdout.decode("utf-8").strip()
+    print(f"dav1d version: {dav1d_version}")
 
 
 if __name__ == "__main__":
@@ -149,83 +154,66 @@ if __name__ == "__main__":
     logger.info(f"Output directory: {args.output_directory}")
     Path(args.output_directory).mkdir(parents=True, exist_ok=True)
 
-    with tempfile.TemporaryDirectory(delete=True) as tmp_dir:
-        logger.debug(f"Temporary directory: {tmp_dir}")
+    logger.info("Decoding bitstream and extracting motion vectors with dav1d")
 
-        logger.info("Generating Inspect Json file")
+    unwrapping_dict = initialize_unwrapping_dict()
+    logged_dimensions = False
 
-        generate_inspect_json(args.input_file, tmp_dir)
+    for frame in tqdm(
+        iter_frames(args.input_file, n_threads=args.threads),
+        desc="Processing frames",
+    ):
+        if not logged_dimensions:
+            logger.info(f"   >>> Width: {frame['width']}")
+            logger.info(f"   >>> Height: {frame['height']}")
+            logged_dimensions = True
 
-        logger.info("Reading video file to get video information")
-        cap = cv2.VideoCapture(args.input_file)
+        # AV1 order hints are cyclic (0-127); unwrap to an absolute frame number.
+        order_hint = frame["frame_offset"]
+        unwrapping_dict[order_hint] += 1
+        frame_number = order_hint + 128 * unwrapping_dict[order_hint]
 
-        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        logger.debug(f"Processing frame {frame_number}")
 
-        logger.info(f"   >>> Total frames: {total_frames}")
-        logger.info(f"   >>> Width: {width}")
-        logger.info(f"   >>> Height: {height}")
+        # Reference order hints [INTRA, LAST, LAST2, LAST3, GOLDEN, BWDREF,
+        # ALTREF2, ALTREF], provided per-frame by dav1d (replaces av1_parser),
+        # unwrapped to absolute frame numbers.
+        frame_ref_index = [0] + list(frame["refpoc"])
+        frame_ref_index = unwrap_order_hints(frame_ref_index, unwrapping_dict)
 
-        cap.release()
+        # Adapt the in-memory arrays to get_motion_vectors' expected schema.
+        frame_data = {
+            "motionVectors": frame["motion_vectors"],
+            "referenceFrame": frame["reference_map"],
+        }
 
-        logger.info("Getting frame reference index")
-        frames_ref_index = get_frame_ref_order_hints(args.input_file)
+        motion_backward, motion_forward = get_motion_vectors(
+            frame_data,
+            frame_number,
+            frame_ref_index,
+            linear_interpolation=args.linear_interpolation,
+            upscale_function=args.upscale_function,
+            enable_bidirectional_filling=args.bidirectional_filling,
+        )
 
-        logger.debug(f"Frames ref index: {frames_ref_index}")
+        writeFlowFile(
+            motion_backward,
+            f"{args.output_directory}/motion_backward_{frame_number}.flo5",
+        )
+        writeFlowFile(
+            motion_forward,
+            f"{args.output_directory}/motion_forward_{frame_number}.flo5",
+        )
 
-        frame_number = 0
-        cursor = 0
+        if args.display:
+            display_backward = flow_to_rgb(motion_backward)
+            display_backward = cv2.cvtColor(display_backward, cv2.COLOR_RGB2BGR)
+            display_forward = flow_to_rgb(motion_forward)
+            display_forward = cv2.cvtColor(display_forward, cv2.COLOR_RGB2BGR)
 
-        unwrapping_dict = initialize_unwrapping_dict()
-
-        with open(f"{tmp_dir}/inspect.json", "rb") as json_file:
-            for frame_data in tqdm(
-                ijson.items(json_file, "item"),
-                total=total_frames,
-                desc="Processing frames",
-            ):
-                if frame_number == total_frames - 1:
-                    break
-
-                frame_number = frame_data["frame"]
-                unwrapping_dict[frame_number] += 1
-                frame_number = frame_number + 128 * unwrapping_dict[frame_number]
-
-                logger.debug(f"Processing frame {frame_number}")
-
-                frame_ref_index = [0] + frames_ref_index[frame_number]
-                frame_ref_index = unwrap_order_hints(frame_ref_index, unwrapping_dict)
-
-                motion_backward, motion_forward = get_motion_vectors(
-                    frame_data,
-                    frame_number,
-                    frame_ref_index,
-                    linear_interpolation=args.linear_interpolation,
-                    upscale_function=args.upscale_function,
-                    enable_bidirectional_filling=args.bidirectional_filling,
-                )
-
-                writeFlowFile(
-                    motion_backward,
-                    f"{args.output_directory}/motion_backward_{frame_number}.flo5",
-                )
-                writeFlowFile(
-                    motion_forward,
-                    f"{args.output_directory}/motion_forward_{frame_number}.flo5",
-                )
-
-                if args.display:
-                    display_backward = flow_to_rgb(motion_backward)
-                    display_backward = cv2.cvtColor(display_backward, cv2.COLOR_RGB2BGR)
-                    display_forward = flow_to_rgb(motion_forward)
-                    display_forward = cv2.cvtColor(display_forward, cv2.COLOR_RGB2BGR)
-
-                    # Concatenate the two images horizontally
-                    display = np.concatenate(
-                        (display_backward, display_forward), axis=1
-                    )
-                    cv2.imshow("Motion Vectors", display)
-                    cv2.waitKey(1)
+            # Concatenate the two images horizontally
+            display = np.concatenate((display_backward, display_forward), axis=1)
+            cv2.imshow("Motion Vectors", display)
+            cv2.waitKey(1)
 
     logger.info("Done processing video file")

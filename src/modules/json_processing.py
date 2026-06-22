@@ -6,9 +6,8 @@
   Copyright © 2026 Julien Zouein (zoueinj@tcd.ie)
 ----------------------------------------------------------------------------
 
- AOM inspect tool is used to retrieve metadata out of AV1 files. This tool save
- the matadata in a JSON file.
- In this file, we define all the functions to process the JSON file.
+ Functions to post-process the per-frame block metadata (motion vectors and
+ reference maps) extracted in memory by src.modules.dav1d_inspect.
 """
 
 import numpy as np
