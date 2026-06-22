@@ -1,0 +1,13 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+
+# Runtime logs
+logs/
+
+# Third-party sources/builds fetched & built by setup.sh
+/src/third_parties/aom*
+
+# Generated optical-flow outputs
+*.flo5
